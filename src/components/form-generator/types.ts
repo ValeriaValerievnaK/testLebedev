@@ -3,11 +3,13 @@ export interface IBaseField {
   model: string
   required?: boolean
   pattern?: string
+  placeholder?: string
 }
 
 export interface ITextField extends IBaseField {
   type: 'text' | 'email' | 'password'
   minLength?: number
+  maxLength?: number
 }
 
 export interface ISelectField extends IBaseField {

@@ -50,6 +50,11 @@ export function useFormValidator(schema: IFormSchema, model: Ref<TFormData>) {
     }
   }
 
+  const reset = () => {
+    errors.value = {}
+    touched.value = {}
+  }
+
   // реактивно обновляем ошибки, но только для полей которые уже трогали
   watch(model, () => {
     Object.keys(touched.value).forEach(fieldModel => {
@@ -62,5 +67,5 @@ export function useFormValidator(schema: IFormSchema, model: Ref<TFormData>) {
     })
   }, { deep: true })
 
-  return { errors, touched, validateField, validateAll, markTouched }
+  return { errors, touched, validateField, validateAll, markTouched, reset }
 }

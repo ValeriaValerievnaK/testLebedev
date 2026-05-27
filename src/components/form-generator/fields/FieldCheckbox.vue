@@ -21,9 +21,13 @@ const emit = defineEmits<{
         :checked="props.value"
         @change="emit('update:value', ($event.target as HTMLInputElement).checked)"
         @blur="emit('blur', props.field.model)"
-        class="field__checkbox"
-        :class="{ 'field__checkbox--error': props.error }"
+        class="field__native"
       />
+      <span class="field__box" :class="{ 'field__box--error': props.error }">
+        <svg v-show="props.value" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <path d="M2 6.5L5 9.5L10 3" stroke="#fff" stroke-width="1.8" stroke-linecap="square" />
+        </svg>
+      </span>
       <span class="field__text">
         {{ props.field.label }}
         <span v-if="props.field.required" class="field__required">*</span>
@@ -33,45 +37,4 @@ const emit = defineEmits<{
   </div>
 </template>
 
-<style scoped>
-.field {
-  margin-bottom: 16px;
-}
-
-.field__label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.field__checkbox {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--accent);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.field__checkbox--error {
-  outline: 1px solid var(--error);
-  border-radius: 2px;
-}
-
-.field__text {
-  font-size: 14px;
-  color: var(--text-h);
-}
-
-.field__required {
-  color: var(--error);
-  margin-left: 2px;
-}
-
-.field__error {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--error);
-}
-</style>
+<style scoped src="./FieldCheckbox.css"></style>

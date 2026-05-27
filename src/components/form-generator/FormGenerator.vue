@@ -1,17 +1,23 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import type { IFormSchema, TFormData, TFieldSchema, ITextField, ISelectField, ICheckboxField } from './types'
 import { useFormValidator } from '@/composables/useFormValidator'
 import FieldText from './fields/FieldText.vue'
+import FieldPassword from './fields/FieldPassword.vue'
 import FieldSelect from './fields/FieldSelect.vue'
 import FieldCheckbox from './fields/FieldCheckbox.vue'
 
-const props = defineProps<{ schema: IFormSchema }>()
+const props = defineProps<{
+  schema: IFormSchema
+  title?: string
+}>()
 const model = defineModel<TFormData>({ required: true })
 const emit = defineEmits<{ submit: [data: TFormData] }>()
 
-const { errors, validateAll, markTouched } = useFormValidator(props.schema, model)
+const { errors, validateAll, markTouched, reset } = useFormValidator(props.schema, model)
 
+const submitting = ref(false)
+const done = ref(false)
 
 const isTextField = (f: TFieldSchema): f is ITextField =>
   f.type === 'text' || f.type === 'email' || f.type === 'password'
@@ -22,21 +28,29 @@ const isSelectField = (f: TFieldSchema): f is ISelectField =>
 const isCheckboxField = (f: TFieldSchema): f is ICheckboxField =>
   f.type === 'checkbox'
 
-
 const asString = (v: string | boolean): string =>
   typeof v === 'string' ? v : ''
 
 const asBool = (v: string | boolean): boolean =>
   typeof v === 'boolean' ? v : false
 
-onMounted(() => {
+const buildDefaults = (): TFormData => {
   const defaults: TFormData = {}
   props.schema.fields.forEach(field => {
-    if (!(field.model in model.value)) {
-      defaults[field.model] = field.type === 'checkbox' ? false : ''
-    }
+    defaults[field.model] = field.type === 'checkbox' ? false : ''
   })
-  model.value = { ...model.value, ...defaults }
+  return defaults
+}
+
+const displayValue = (field: TFieldSchema): string => {
+  const v = model.value[field.model]
+  if (typeof v === 'boolean') return v ? 'Да' : 'Нет'
+  if (typeof v === 'string') return v
+  return ''
+}
+
+onMounted(() => {
+  model.value = { ...buildDefaults(), ...model.value }
 })
 
 const updateField = (fieldModel: string, value: string | boolean) => {
@@ -44,17 +58,58 @@ const updateField = (fieldModel: string, value: string | boolean) => {
 }
 
 const handleSubmit = () => {
-  if (validateAll()) {
+  if (!validateAll()) return
+  submitting.value = true
+  setTimeout(() => {
+    submitting.value = false
+    done.value = true
     emit('submit', { ...model.value })
-  }
+  }, 700)
+}
+
+const handleReset = () => {
+  model.value = buildDefaults()
+  reset()
+  done.value = false
 }
 </script>
 
 <template>
-  <form @submit.prevent="handleSubmit" novalidate>
+  <div v-if="done" class="card">
+    <div class="card__badge">
+      <span class="card__dot"></span>
+      <span>Данные приняты</span>
+    </div>
+    <h3 class="card__done-title">Готово.</h3>
+    <p class="card__done-text">Форма успешно отправлена.</p>
+    <dl class="summary">
+      <template v-for="field in schema.fields" :key="field.model">
+        <dt class="summary__key">{{ field.label }}</dt>
+        <dd class="summary__val">{{ displayValue(field) }}</dd>
+      </template>
+    </dl>
+    <button type="button" class="btn btn--primary" @click="handleReset">
+      <span>Заполнить заново</span>
+      <span class="btn__arrow">→</span>
+    </button>
+  </div>
+
+  <form v-else class="card" novalidate @submit.prevent="handleSubmit">
+    <div v-if="title" class="card__head">
+      <h2 class="card__title">{{ title }}</h2>
+    </div>
+
     <template v-for="field in schema.fields" :key="field.model">
+      <FieldPassword
+        v-if="isTextField(field) && field.type === 'password'"
+        :field="field"
+        :value="asString(model[field.model])"
+        :error="errors[field.model]"
+        @update:value="updateField(field.model, $event)"
+        @blur="markTouched(field.model)"
+      />
       <FieldText
-        v-if="isTextField(field)"
+        v-else-if="isTextField(field)"
         :field="field"
         :value="asString(model[field.model])"
         :error="errors[field.model]"
@@ -79,33 +134,16 @@ const handleSubmit = () => {
       />
     </template>
 
-    <button type="submit" class="form__submit">
-      Отправить
-    </button>
+    <div class="card__actions">
+      <button type="submit" class="btn btn--primary" :disabled="submitting">
+        <span>{{ submitting ? 'Отправка…' : 'Отправить' }}</span>
+        <span class="btn__arrow">→</span>
+      </button>
+      <button type="button" class="btn btn--ghost" @click="handleReset">
+        Сброс
+      </button>
+    </div>
   </form>
 </template>
 
-<style scoped>
-.form__submit {
-  width: 100%;
-  padding: 10px 16px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 500;
-  font-family: inherit;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  margin-top: 8px;
-  transition: opacity 0.2s;
-}
-
-.form__submit:hover {
-  opacity: 0.85;
-}
-
-.form__submit:active {
-  opacity: 0.7;
-}
-</style>
+<style scoped src="./FormGenerator.css"></style>
