@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useId } from 'vue'
 import type { ICheckboxField } from '../types'
 
 const props = defineProps<{
@@ -11,6 +12,8 @@ const emit = defineEmits<{
   'update:value': [value: boolean]
   blur: [model: string]
 }>()
+
+const errorId = `${useId()}-error`
 </script>
 
 <template>
@@ -19,6 +22,8 @@ const emit = defineEmits<{
       <input
         type="checkbox"
         :checked="props.value"
+        :aria-invalid="props.error ? 'true' : undefined"
+        :aria-describedby="props.error ? errorId : undefined"
         @change="emit('update:value', ($event.target as HTMLInputElement).checked)"
         @blur="emit('blur', props.field.model)"
         class="field__native"
@@ -33,7 +38,7 @@ const emit = defineEmits<{
         <span v-if="props.field.required" class="field__required">*</span>
       </span>
     </label>
-    <p v-if="props.error" class="field__error">{{ props.error }}</p>
+    <p v-if="props.error" :id="errorId" class="field__error">{{ props.error }}</p>
   </div>
 </template>
 

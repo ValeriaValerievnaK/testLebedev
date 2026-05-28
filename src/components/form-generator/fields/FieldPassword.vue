@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, useId } from 'vue'
 import type { ITextField } from '../types'
 
 const props = defineProps<{
@@ -13,6 +13,8 @@ const emit = defineEmits<{
   blur: [model: string]
 }>()
 
+const fieldId = useId()
+const errorId = `${fieldId}-error`
 const show = ref(false)
 
 const score = computed(() => {
@@ -31,15 +33,18 @@ const strengthLabel = computed(() => labels[score.value] ?? '—')
 
 <template>
   <div class="field">
-    <label class="field__label">
+    <label class="field__label" :for="fieldId">
       {{ props.field.label }}
       <span v-if="props.field.required" class="field__required">*</span>
     </label>
     <div class="field__wrap">
       <input
+        :id="fieldId"
         :type="show ? 'text' : 'password'"
         :value="props.value"
         :placeholder="props.field.placeholder"
+        :aria-invalid="props.error ? 'true' : undefined"
+        :aria-describedby="props.error ? errorId : undefined"
         @input="emit('update:value', ($event.target as HTMLInputElement).value)"
         @blur="emit('blur', props.field.model)"
         class="field__input"
@@ -59,7 +64,7 @@ const strengthLabel = computed(() => labels[score.value] ?? '—')
       <span>Надёжность</span>
       <span>{{ strengthLabel }}</span>
     </div>
-    <p v-if="props.error" class="field__error">{{ props.error }}</p>
+    <p v-if="props.error" :id="errorId" class="field__error">{{ props.error }}</p>
   </div>
 </template>
 
