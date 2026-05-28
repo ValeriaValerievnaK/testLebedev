@@ -1,6 +1,17 @@
 import { ref, watch, type Ref } from 'vue'
 import type { IFormSchema, TFormData, TFormErrors } from '@/components/form-generator/types'
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+
+// кривой паттерн в схеме не должен ронять валидацию, считаем поле валидным
+const matchesPattern = (pattern: string, value: string): boolean => {
+  try {
+    return new RegExp(pattern).test(value)
+  } catch {
+    return true
+  }
+}
+
 export function useFormValidator(schema: IFormSchema, model: Ref<TFormData>) {
   const errors = ref<TFormErrors>({})
   const touched = ref<Record<string, boolean>>({})
@@ -16,12 +27,17 @@ export function useFormValidator(schema: IFormSchema, model: Ref<TFormData>) {
       if (field.type !== 'checkbox' && !value) return 'Поле обязательно'
     }
 
-    // дальнейшие проверки только для текстовых значений
-    if (field.type !== 'checkbox' && typeof value === 'string') {
+    // проверки, только для непустых текстовых значений
+    if (field.type !== 'checkbox' && typeof value === 'string' && value !== '') {
       if ('minLength' in field && field.minLength !== undefined && value.length < field.minLength) {
         return `Минимум ${field.minLength} символов`
       }
-      if (field.pattern && !new RegExp(field.pattern).test(value)) {
+      if ('maxLength' in field && field.maxLength !== undefined && value.length > field.maxLength) {
+        return `Максимум ${field.maxLength} символов`
+      }
+      if (field.pattern) {
+        if (!matchesPattern(field.pattern, value)) return 'Неверный формат'
+      } else if (field.type === 'email' && !EMAIL_PATTERN.test(value)) {
         return 'Неверный формат'
       }
     }
@@ -40,14 +56,19 @@ export function useFormValidator(schema: IFormSchema, model: Ref<TFormData>) {
     return Object.keys(newErrors).length === 0
   }
 
-  const markTouched = (fieldModel: string) => {
-    touched.value[fieldModel] = true
+  // провалидировать поле и синхронизировать его ошибку
+  const applyError = (fieldModel: string) => {
     const error = validateField(fieldModel)
     if (error) {
       errors.value[fieldModel] = error
     } else {
       delete errors.value[fieldModel]
     }
+  }
+
+  const markTouched = (fieldModel: string) => {
+    touched.value[fieldModel] = true
+    applyError(fieldModel)
   }
 
   const reset = () => {
@@ -57,14 +78,7 @@ export function useFormValidator(schema: IFormSchema, model: Ref<TFormData>) {
 
   // реактивно обновляем ошибки, но только для полей которые уже трогали
   watch(model, () => {
-    Object.keys(touched.value).forEach(fieldModel => {
-      const error = validateField(fieldModel)
-      if (error) {
-        errors.value[fieldModel] = error
-      } else {
-        delete errors.value[fieldModel]
-      }
-    })
+    Object.keys(touched.value).forEach(applyError)
   }, { deep: true })
 
   return { errors, touched, validateField, validateAll, markTouched, reset }

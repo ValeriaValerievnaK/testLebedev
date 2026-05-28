@@ -50,6 +50,47 @@ describe('useFormValidator', () => {
     expect(validateField('code')).toBe('Неверный формат')
   })
 
+  it('validateField catches maxLength violation', () => {
+    const schemaWithMax: IFormSchema = {
+      fields: [{ type: 'text', label: 'Имя', model: 'name', maxLength: 5 }]
+    }
+    const model = ref<TFormData>({ name: 'abcdef' })
+    const { validateField } = useFormValidator(schemaWithMax, model)
+
+    expect(validateField('name')).toBe('Максимум 5 символов')
+  })
+
+  it('validateField does not throw on an invalid regex pattern', () => {
+    const schemaBadPattern: IFormSchema = {
+      fields: [{ type: 'text', label: 'X', model: 'x', pattern: '([' }]
+    }
+    const model = ref<TFormData>({ x: 'whatever' })
+    const { validateField } = useFormValidator(schemaBadPattern, model)
+
+    expect(() => validateField('x')).not.toThrow()
+    expect(validateField('x')).toBe('')
+  })
+
+  it('validateField validates email format when no pattern is provided', () => {
+    const emailSchema: IFormSchema = {
+      fields: [{ type: 'email', label: 'Email', model: 'email', required: true }]
+    }
+    const model = ref<TFormData>({ email: 'not-an-email' })
+    const { validateField } = useFormValidator(emailSchema, model)
+
+    expect(validateField('email')).toBe('Неверный формат')
+  })
+
+  it('validateField accepts a valid email when no pattern is provided', () => {
+    const emailSchema: IFormSchema = {
+      fields: [{ type: 'email', label: 'Email', model: 'email', required: true }]
+    }
+    const model = ref<TFormData>({ email: 'user@example.com' })
+    const { validateField } = useFormValidator(emailSchema, model)
+
+    expect(validateField('email')).toBe('')
+  })
+
   it('markTouched shows error for invalid field', () => {
     const model = ref<TFormData>({ name: '', email: '', password: '', role: '', terms: false })
     const { markTouched, errors } = useFormValidator(schema, model)

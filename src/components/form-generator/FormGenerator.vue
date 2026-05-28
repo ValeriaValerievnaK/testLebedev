@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import type { IFormSchema, TFormData, TFieldSchema, ITextField, ISelectField, ICheckboxField } from './types'
+import type { IFormSchema, TFormData } from './types'
 import { useFormValidator } from '@/composables/useFormValidator'
+import { isTextField, isSelectField, isCheckboxField } from './guards'
+import { asString, asBool, buildDefaults, displayValue } from './helpers'
 import FieldText from './fields/FieldText.vue'
 import FieldPassword from './fields/FieldPassword.vue'
 import FieldSelect from './fields/FieldSelect.vue'
@@ -19,38 +21,8 @@ const { errors, validateAll, markTouched, reset } = useFormValidator(props.schem
 const submitting = ref(false)
 const done = ref(false)
 
-const isTextField = (f: TFieldSchema): f is ITextField =>
-  f.type === 'text' || f.type === 'email' || f.type === 'password'
-
-const isSelectField = (f: TFieldSchema): f is ISelectField =>
-  f.type === 'select'
-
-const isCheckboxField = (f: TFieldSchema): f is ICheckboxField =>
-  f.type === 'checkbox'
-
-const asString = (v: string | boolean): string =>
-  typeof v === 'string' ? v : ''
-
-const asBool = (v: string | boolean): boolean =>
-  typeof v === 'boolean' ? v : false
-
-const buildDefaults = (): TFormData => {
-  const defaults: TFormData = {}
-  props.schema.fields.forEach(field => {
-    defaults[field.model] = field.type === 'checkbox' ? false : ''
-  })
-  return defaults
-}
-
-const displayValue = (field: TFieldSchema): string => {
-  const v = model.value[field.model]
-  if (typeof v === 'boolean') return v ? 'Да' : 'Нет'
-  if (typeof v === 'string') return v
-  return ''
-}
-
 onMounted(() => {
-  model.value = { ...buildDefaults(), ...model.value }
+  model.value = { ...buildDefaults(props.schema), ...model.value }
 })
 
 const updateField = (fieldModel: string, value: string | boolean) => {
@@ -68,7 +40,7 @@ const handleSubmit = () => {
 }
 
 const handleReset = () => {
-  model.value = buildDefaults()
+  model.value = buildDefaults(props.schema)
   reset()
   done.value = false
 }
@@ -85,7 +57,7 @@ const handleReset = () => {
     <dl class="summary">
       <template v-for="field in schema.fields" :key="field.model">
         <dt class="summary__key">{{ field.label }}</dt>
-        <dd class="summary__val">{{ displayValue(field) }}</dd>
+        <dd class="summary__val">{{ displayValue(field, model) }}</dd>
       </template>
     </dl>
     <button type="button" class="btn btn--primary" @click="handleReset">
