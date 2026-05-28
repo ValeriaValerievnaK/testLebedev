@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, useId } from 'vue'
 import type { ITextField } from '../types'
+import { passwordScore } from '../helpers'
 
 const props = defineProps<{
   field: ITextField
@@ -17,15 +18,7 @@ const fieldId = useId()
 const errorId = `${fieldId}-error`
 const show = ref(false)
 
-const score = computed(() => {
-  const pw = props.value
-  let s = 0
-  if (pw.length >= 8) s += 1
-  if (/[A-ZА-Я]/.test(pw)) s += 1
-  if (/[0-9]/.test(pw)) s += 1
-  if (/[^A-Za-zА-Яа-я0-9]/.test(pw)) s += 1
-  return s
-})
+const score = computed(() => passwordScore(props.value))
 
 const labels = ['—', 'СЛАБЫЙ', 'СРЕДНИЙ', 'ХОРОШИЙ', 'СИЛЬНЫЙ']
 const strengthLabel = computed(() => labels[score.value] ?? '—')
